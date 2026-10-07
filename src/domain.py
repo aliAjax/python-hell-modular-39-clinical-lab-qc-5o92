@@ -3,6 +3,10 @@ from enum import Enum
 from typing import Any, Dict
 
 
+#: 总务组：升级时缺失组标记的数据先落到这里，再逐条指派。
+GENERAL_GROUP = "general"
+
+
 class DomainError(Exception):
     """Base class for domain failures."""
 
@@ -42,6 +46,7 @@ class Role(str, Enum):
 class Actor:
     user_id: str
     role: str
+    group_id: str = GENERAL_GROUP
 
     @classmethod
     def from_headers(cls, headers):
@@ -49,7 +54,8 @@ class Actor:
         role = headers.get("X-Role", "viewer")
         if role not in {item.value for item in Role}:
             raise PermissionDenied("unknown role: " + role)
-        return cls(user_id=user_id, role=role)
+        group_id = headers.get("X-Group-Id", GENERAL_GROUP) or GENERAL_GROUP
+        return cls(user_id=user_id, role=role, group_id=group_id)
 
 
 @dataclass

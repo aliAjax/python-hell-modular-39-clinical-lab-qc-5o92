@@ -84,6 +84,12 @@ def create_handler(service, rules, static_dir):
                         return self._send_html(200, handle.read())
                 if parts == ["api", "audit"]:
                     return self._send(200, {"items": service.audit_log()})
+                if parts == ["api", "group-violations"]:
+                    return self._send(200, {"items": service.list_violations()})
+                if parts == ["api", "group-assignments"]:
+                    query = parse_qs(parsed.query)
+                    status = query.get("status", [None])[0]
+                    return self._send(200, {"items": service.list_assignments(status=status)})
                 if len(parts) == 3 and parts[:2] == ["api", "entities"]:
                     return self._send(200, service.get(parts[2]))
                 if len(parts) >= 2 and parts[0] == "api":
@@ -103,6 +109,32 @@ def create_handler(service, rules, static_dir):
                 parsed = urlparse(self.path)
                 parts = [part for part in parsed.path.split("/") if part]
                 actor = self._actor()
+                if (
+                    len(parts) == 4
+                    and parts[:2] == ["api", "entities"]
+                    and parts[3] == "assign-group"
+                ):
+                    body = self._body()
+                    group_id = body.get("group_id")
+                    if not group_id:
+                        raise ValidationError("group_id is required")
+                    return self._send(
+                        200,
+                        service.assign_group(actor, parts[2], group_id),
+                    )
+                if (
+                    len(parts) == 3
+                    and parts[:2] == ["api", "group-assignments"]
+                    and parts[2] in ("process", "retry")
+                ):
+                    body = self._body()
+                    if parts[2] == "retry":
+                        return self._send(200, service.retry_pending_assignments(actor))
+                    return self._send(
+                        200,
+                        service.process_pending_assignments(
+                            actor, body.get("targets")),
+                    )
                 if len(parts) == 3 and parts[:2] == ["api", "entities"]:
                     body = self._body()
                     action = body.pop("action", None)

@@ -1,4 +1,4 @@
-from .domain import ConflictError, InvalidTransition, PermissionDenied, ValidationError
+from .domain import GENERAL_GROUP, ConflictError, InvalidTransition, PermissionDenied, ValidationError
 
 
 def _find_one(lookup, kind, field, value):
@@ -201,14 +201,18 @@ class RuleEngine:
         "instruments": "instrument",
         "qc_runs": "qc_run",
         "result_batches": "result_batch",
+        "lab_groups": "lab_group",
     }
     INITIAL_STATUS = {
+        "lab_group": "active",
         "assay": "active",
         "qc_lot": "registered",
         "instrument": "ready",
         "qc_run": "pending",
         "result_batch": "waiting",
     }
+    #: 需要按专业组归属的对象类型。
+    GROUP_SCOPED_KINDS = ("assay", "qc_lot", "result_batch")
     TRANSITIONS = {
         "assay": {
             "suspend": (("active",), "suspended"),
@@ -243,6 +247,7 @@ class RuleEngine:
         },
     }
     CREATE_REQUIRED = {
+        "lab_group": ("name",),
         "assay": ("name", "unit", "allowed_low", "allowed_high"),
         "qc_lot": ("assay_id", "lot_no", "target", "sd", "expires_at"),
         "instrument": ("name", "serial", "calibration_due"),
@@ -270,6 +275,7 @@ class RuleEngine:
         ("result_batch", "correct"): ("reason",),
     }
     CREATE_ROLES = {
+        "lab_group": ("supervisor", "admin"),
         "assay": ("supervisor", "admin"),
         "qc_lot": ("supervisor", "admin"),
         "instrument": ("supervisor", "admin"),
@@ -290,7 +296,7 @@ class RuleEngine:
         "investigate": ("supervisor", "admin"),
         "resolve": ("supervisor", "admin"),
         "correct": ("supervisor", "admin"),
-        "release": ("supervisor", "admin"),
+        "release": ("analyst", "supervisor", "admin"),
         "intercept": ("operator", "supervisor", "admin"),
     }
     CUSTOM_CREATE = {
