@@ -23,6 +23,14 @@ python3 app.py --db ./data.db --port 8339
 
 `assay`为检测项目，`qc_lot`为质控品批次，`instrument`为仪器，`qc_run`为质控结果，`result_batch`为患者结果批次。
 
+## 专业组归属
+
+检验科各专业组共用同一套系统，权限按专业组隔离。`assay`、`qc_lot`、`result_batch` 带组归属；`qc_run` 通过其质控品批次继承组；`instrument` 为共用资源。
+
+- 跨组操作（放行、创建、指派等）一律拒绝，并在审计中记录操作者、角色、来源组与目标组。
+- 检测项目换组后，其下批次的组确认失效，需重新确认归属；批次重新确认时必须与检测项目当前组一致，杜绝“项目归一组、批次在另一组”。
+- 历史数据缺组标记：升级时先落到总务组（`general`）并标记待指派，再逐条指派；单条失败不影响其余，可断点重试。
+
 ## 接口
 
 - `GET /health`
@@ -30,9 +38,13 @@ python3 app.py --db ./data.db --port 8339
 - `GET /api/entities/<id>`
 - `POST /api/<kind>`
 - `POST /api/entities/<id>/actions`
+- `POST /api/entities/<id>/group`（指派组归属）
+- `GET /api/group-assignments`（待重新确认归属的对象）
+- `POST /api/admin/migrate-groups`（升级：存量数据落到总务组）
+- `POST /api/admin/group-assignments`（逐条指派，失败可重试）
 - `GET /api/audit`
 
-身份通过`X-User-Id`和`X-Role`请求头传入。可选`Idempotency-Key`防止重复创建。
+身份通过`X-User-Id`、`X-Role`和`X-Group`请求头传入。可选`Idempotency-Key`防止重复创建。
 
 ## 测试
 

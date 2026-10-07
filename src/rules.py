@@ -290,7 +290,7 @@ class RuleEngine:
         "investigate": ("supervisor", "admin"),
         "resolve": ("supervisor", "admin"),
         "correct": ("supervisor", "admin"),
-        "release": ("supervisor", "admin"),
+        "release": ("analyst", "supervisor", "admin"),
         "intercept": ("operator", "supervisor", "admin"),
     }
     CUSTOM_CREATE = {

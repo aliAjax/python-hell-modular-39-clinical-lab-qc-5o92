@@ -84,16 +84,18 @@ def create_handler(service, rules, static_dir):
                         return self._send_html(200, handle.read())
                 if parts == ["api", "audit"]:
                     return self._send(200, {"items": service.audit_log()})
+                if parts == ["api", "group-assignments"]:
+                    return self._send(200, {"items": service.pending_group_assignments()})
                 if len(parts) == 3 and parts[:2] == ["api", "entities"]:
-                    return self._send(200, service.get(parts[2]))
+                    return self._send(200, service.get(parts[2], actor=self._actor()))
                 if len(parts) >= 2 and parts[0] == "api":
                     if parts[1] == "entities":
                         raise NotFoundError("not found")
                     if len(parts) == 3:
-                        return self._send(200, service.get(parts[2]))
+                        return self._send(200, service.get(parts[2], actor=self._actor()))
                     query = parse_qs(parsed.query)
                     status = query.get("status", [None])[0]
-                    return self._send(200, {"items": service.list(parts[1], status=status)})
+                    return self._send(200, {"items": service.list(parts[1], status=status, actor=self._actor())})
                 raise NotFoundError("not found")
             except Exception as exc:
                 self._fail(exc)
@@ -137,6 +139,19 @@ def create_handler(service, rules, static_dir):
                     return self._send(
                         200,
                         service.transition(actor, parts[2], parts[3], self._body(), None),
+                    )
+                if len(parts) == 4 and parts[:2] == ["api", "entities"] and parts[3] == "group":
+                    body = self._body()
+                    group = body.get("group")
+                    if not group:
+                        raise ValidationError("group is required")
+                    return self._send(200, service.assign_group(actor, parts[2], group))
+                if len(parts) == 3 and parts[:2] == ["api", "admin"] and parts[2] == "migrate-groups":
+                    return self._send(200, service.migrate_groups())
+                if len(parts) == 3 and parts[:2] == ["api", "admin"] and parts[2] == "group-assignments":
+                    body = self._body()
+                    return self._send(
+                        200, service.assign_pending_groups(actor, body.get("assignments", {}))
                     )
                 if len(parts) == 2 and parts[0] == "api":
                     body = self._body()
